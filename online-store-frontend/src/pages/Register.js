@@ -15,7 +15,7 @@ const Register = () => {
     e.preventDefault();
     try {
         // SI DA FALLO CAMBIAR A 3000
-      const response = await axios.post('http://localhost:5000/api/users/register', formData);
+      await axios.post('http://localhost:5000/api/users/register', formData);
       alert('Registro exitoso');
       navigate('/login'); // Redirige al login tras el registro exitoso
     } catch (err) {

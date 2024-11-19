@@ -63,3 +63,25 @@ sequelize.sync({ force: false }) // Cambiar a `force: true` si necesitas recrear
   sequelize.sync({ force: false }) // Cambiar a `true` si necesitas recrear las tablas
   .then(() => console.log('Tablas sincronizadas'))
   .catch((err) => console.error('Error al sincronizar tablas:', err));
+
+const multer = require('multer');
+const path = require('path');
+
+
+// Configuración de multer
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // Carpeta donde se guardarán las imágenes
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`); // Nombre único para cada archivo
+  },
+});
+
+const upload = multer({ storage });
+
+// Middleware para servir archivos estáticos (imágenes)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+module.exports = { app, upload };
+

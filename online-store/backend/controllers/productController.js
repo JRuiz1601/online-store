@@ -4,7 +4,11 @@ const Product = require('../models/Product');
 exports.createProduct = async (req, res) => {
   const { name, description, price, stock } = req.body;
   try {
-    const product = new Product({ name, description, price, stock });
+    // Validar si hay una imagen en la solicitud
+    const image = req.file ? `/uploads/${req.file.filename}` : null;
+
+    // Crear el producto con la imagen
+    const product = new Product({ name, description, price, stock, image });
     const savedProduct = await product.save();
     res.status(201).json(savedProduct);
   } catch (err) {
@@ -37,13 +41,23 @@ exports.getProductById = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { name, description, price, stock } = req.body;
-    const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ error: 'Producto no encontrado' });
 
+    // Buscar el producto por ID
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ error: 'Producto no encontrado' });
+    }
+
+    // Actualizar los campos del producto
     product.name = name || product.name;
     product.description = description || product.description;
     product.price = price || product.price;
     product.stock = stock || product.stock;
+
+    // Si hay una nueva imagen, actualízala
+    if (req.file) {
+      product.image = `/uploads/${req.file.filename}`;
+    }
 
     const updatedProduct = await product.save();
     res.json(updatedProduct);
@@ -51,6 +65,7 @@ exports.updateProduct = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
 
 // Eliminar un producto
 exports.deleteProduct = async (req, res) => {
