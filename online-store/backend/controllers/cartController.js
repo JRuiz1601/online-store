@@ -47,7 +47,13 @@ exports.getCart = async (req, res) => {
 
 // Actualizar la cantidad de un producto en el carrito
 exports.updateCart = async (req, res) => {
-  const { productId, quantity } = req.body;
+  const { productId } = req.params; // Ahora el productId viene de req.params
+  const { quantity } = req.body;
+
+  // Validar que la cantidad sea un número válido
+  if (!quantity || quantity <= 0) {
+    return res.status(400).json({ error: 'Cantidad inválida' });
+  }
 
   try {
     const cart = await Cart.findOne({ userId: req.user._id });
@@ -71,11 +77,18 @@ exports.updateCart = async (req, res) => {
 
 // Eliminar un producto del carrito
 exports.removeFromCart = async (req, res) => {
-  const { productId } = req.body;
+  const { productId } = req.params; // Ahora el productId viene de req.params
 
   try {
     const cart = await Cart.findOne({ userId: req.user._id });
     if (!cart) return res.status(404).json({ error: 'Carrito no encontrado' });
+
+    // Depurar: Verificar los IDs antes de filtrar
+    console.log('Producto en el carrito antes de eliminar:');
+    cart.products.forEach((product) => {
+      console.log('Product ID:', product.productId.toString());
+      console.log('Param Product ID:', productId);
+    });
 
     cart.products = cart.products.filter(
       (product) => product.productId.toString() !== productId
@@ -87,6 +100,7 @@ exports.removeFromCart = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // Finalizar compra y generar factura con detalles de productos
 exports.checkoutCart = async (req, res) => {

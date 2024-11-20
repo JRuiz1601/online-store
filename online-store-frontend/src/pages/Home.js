@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ProductForm from '../components/ProductForm';
+import '../styles/Home.css';
 
 const Home = () => {
   const [products, setProducts] = useState([]);
-  const [isAdmin, setIsAdmin] = useState(false); // Determina si el usuario es admin
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentProduct, setCurrentProduct] = useState(null);
 
   useEffect(() => {
-    // Obtener productos del backend
     const fetchProducts = async () => {
       try {
         const response = await axios.get('http://localhost:5000/api/products');
@@ -17,11 +19,9 @@ const Home = () => {
       }
     };
 
-    // Verificar si el usuario es administrador
     const token = localStorage.getItem('token');
     if (token) {
-      const decoded = JSON.parse(atob(token.split('.')[1])); // Decodifica el token JWT
-      console.log('Token decodificado:', decoded); // Imprime el token decodificado
+      const decoded = JSON.parse(atob(token.split('.')[1]));
       if (decoded.role === 'Admin') {
         setIsAdmin(true);
       }
@@ -30,7 +30,6 @@ const Home = () => {
     fetchProducts();
   }, []);
 
-  // Función para eliminar un producto
   const handleDelete = async (id) => {
     try {
       const token = localStorage.getItem('token');
@@ -39,7 +38,6 @@ const Home = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-      // Actualiza los productos después de eliminar
       setProducts(products.filter((product) => product._id !== id));
       alert('Producto eliminado con éxito');
     } catch (err) {
@@ -48,13 +46,54 @@ const Home = () => {
     }
   };
 
-  // Función para modificar un producto (navegar a una página de edición)
-  const handleEdit = (id) => {
-    // Navegar a la página de edición, se implementará más adelante
-    alert(`Navegando a la edición del producto con ID: ${id}`);
-    // Puedes usar una ruta de edición específica con React Router aquí
+  const handleEdit = (product) => {
+    setCurrentProduct(product);
+    setIsEditing(true);
   };
 
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(
+        `http://localhost:5000/api/products/${currentProduct._id}`,
+        currentProduct,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      alert('Producto actualizado con éxito');
+      setProducts((prev) =>
+        prev.map((product) =>
+          product._id === currentProduct._id ? currentProduct : product
+        )
+      );
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Error al actualizar el producto:', err.message);
+      alert('No se pudo actualizar el producto');
+    }
+  };
+  const handleAddToCart = async (productId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        'http://localhost:5000/api/cart/add',
+        { productId, quantity: 1 }, // Enviar el producto y cantidad
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      alert('Producto agregado al carrito');
+    } catch (err) {
+      console.error('Error al agregar producto al carrito:', err.message);
+      alert('No se pudo agregar el producto al carrito');
+    }
+  };
   return (
     <div>
       <h1>Productos Disponibles</h1>
@@ -62,7 +101,7 @@ const Home = () => {
         {products.map((product) => (
           <div key={product._id} style={{ border: '1px solid #ccc', padding: '1rem', width: '200px' }}>
             <img
-              src={`http://localhost:5000${product.image}`} // Ajusta la URL con la ruta completa del servidor
+              src={`http://localhost:5000${product.image}`}
               alt={product.name}
               style={{ width: '100%', height: '150px', objectFit: 'cover' }}
             />
@@ -70,11 +109,11 @@ const Home = () => {
             <p>{product.description}</p>
             <p>Precio: ${product.price}</p>
             <p>Stock: {product.stock}</p>
-
-            {/* Mostrar botones de editar y eliminar solo para administradores */}
+            {/* Botón para agregar al carrito */}
+            <button onClick={() => handleAddToCart(product._id)}>Agregar al Carrito</button>
             {isAdmin && (
               <div style={{ marginTop: '10px' }}>
-                <button onClick={() => handleEdit(product._id)} style={{ marginRight: '10px' }}>
+                <button onClick={() => handleEdit(product)} style={{ marginRight: '10px' }}>
                   Editar
                 </button>
                 <button onClick={() => handleDelete(product._id)} style={{ color: 'red' }}>
@@ -85,13 +124,73 @@ const Home = () => {
           </div>
         ))}
       </div>
-
-      {/* Formulario para agregar productos, solo visible para administradores */}
       {isAdmin && (
         <div>
           <h2>Agregar Producto</h2>
           <ProductForm />
         </div>
+      )}
+      {isEditing && (
+        <>
+          <div className="modal-overlay" onClick={() => setIsEditing(false)}></div>
+          <div className="modal-container">
+            <h3>Editar Producto</h3>
+            <form onSubmit={handleUpdate}>
+              <div>
+                <label>Nombre:</label>
+                <input
+                  type="text"
+                  value={currentProduct.name}
+                  onChange={(e) =>
+                    setCurrentProduct({ ...currentProduct, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label>Descripción:</label>
+                <textarea
+                  value={currentProduct.description}
+                  onChange={(e) =>
+                    setCurrentProduct({
+                      ...currentProduct,
+                      description: e.target.value,
+                    })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label>Precio:</label>
+                <input
+                  type="number"
+                  value={currentProduct.price}
+                  onChange={(e) =>
+                    setCurrentProduct({ ...currentProduct, price: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <label>Stock:</label>
+                <input
+                  type="number"
+                  value={currentProduct.stock}
+                  onChange={(e) =>
+                    setCurrentProduct({ ...currentProduct, stock: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <button type="submit" style={{ marginRight: '10px' }}>
+                Guardar Cambios
+              </button>
+              <button type="button" onClick={() => setIsEditing(false)}>
+                Cancelar
+              </button>
+            </form>
+          </div>
+        </>
       )}
     </div>
   );

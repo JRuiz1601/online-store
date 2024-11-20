@@ -1,4 +1,5 @@
 const Invoice = require('../modelsRelational/Invoice');
+const jwt = require('jsonwebtoken');
 
 // Crear una factura
 exports.createInvoice = async (req, res) => {
@@ -95,6 +96,34 @@ exports.getInvoiceWithUserDetails = async (req, res) => {
     res.json(enrichedInvoice);
   } catch (err) {
     console.error('Error al obtener factura con detalles del usuario:', err.message);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+exports.getUserInvoices = async (req, res) => {
+  try {
+    // Obtener el token desde los encabezados
+    const token = req.headers.authorization.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado, token no proporcionado' });
+    }
+
+    // Decodificar el token para obtener el userId
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id; // Extraer el ID del usuario del token
+
+    console.log('User ID extraído del token:', userId);
+
+    // Buscar facturas asociadas al userId
+    const invoices = await Invoice.findAll({ where: { userId } });
+
+    if (invoices.length === 0) {
+      return res.status(404).json({ error: 'No se encontraron facturas para este usuario' });
+    }
+
+    res.json(invoices);
+  } catch (err) {
+    console.error('Error al obtener facturas del usuario:', err.message);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
