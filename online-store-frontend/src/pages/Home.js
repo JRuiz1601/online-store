@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ProductForm from '../components/ProductForm';
-import '../styles/Home.css';
+import { FiEdit2, FiTrash2, FiShoppingCart, FiPlus, FiX } from 'react-icons/fi';
+import '../styles/Login.css';
 
 const Home = () => {
   const [products, setProducts] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentProduct, setCurrentProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -95,62 +98,110 @@ const Home = () => {
     }
   };
   return (
-    <div>
-      <h1>Productos Disponibles</h1>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+    <div className="home-container fade-in">
+      <div className="products-header">
+        <h1 className="section-title">Productos Disponibles</h1>
+        {isAdmin && (
+          <button 
+            className="add-product-btn"
+            onClick={() => setShowForm(!showForm)}
+          >
+            <FiPlus /> Nuevo Producto
+          </button>
+        )}
+      </div>
+
+      <div className="products-grid">
         {products.map((product) => (
-          <div key={product._id} style={{ border: '1px solid #ccc', padding: '1rem', width: '200px' }}>
-            <img
-              src={`http://localhost:5000${product.image}`}
-              alt={product.name}
-              style={{ width: '100%', height: '150px', objectFit: 'cover' }}
-            />
-            <h3>{product.name}</h3>
-            <p>{product.description}</p>
-            <p>Precio: ${product.price}</p>
-            <p>Stock: {product.stock}</p>
-            {/* Botón para agregar al carrito */}
-            <button onClick={() => handleAddToCart(product._id)}>Agregar al Carrito</button>
-            {isAdmin && (
-              <div style={{ marginTop: '10px' }}>
-                <button onClick={() => handleEdit(product)} style={{ marginRight: '10px' }}>
-                  Editar
-                </button>
-                <button onClick={() => handleDelete(product._id)} style={{ color: 'red' }}>
-                  Eliminar
+          <div key={product._id} className="product-card scale-in">
+            <div className="product-image-container">
+              <img
+                src={`http://localhost:5000${product.image}`}
+                alt={product.name}
+                className="product-image"
+              />
+              <div className="product-overlay">
+                <button 
+                  className="cart-btn"
+                  onClick={() => handleAddToCart(product._id)}
+                >
+                  <FiShoppingCart /> Agregar al Carrito
                 </button>
               </div>
-            )}
+            </div>
+            
+            <div className="product-info">
+              <h3 className="product-name">{product.name}</h3>
+              <p className="product-description">{product.description}</p>
+              <div className="product-details">
+                <span className="product-price">${product.price}</span>
+                <span className="product-stock">Stock: {product.stock}</span>
+              </div>
+
+              {isAdmin && (
+                <div className="admin-actions">
+                  <button 
+                    className="edit-btn"
+                    onClick={() => handleEdit(product)}
+                  >
+                    <FiEdit2 />
+                  </button>
+                  <button 
+                    className="delete-btn"
+                    onClick={() => handleDelete(product._id)}
+                  >
+                    <FiTrash2 />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
-      {isAdmin && (
-        <div>
-          <h2>Agregar Producto</h2>
-          <ProductForm />
+
+      {isAdmin && showForm && (
+        <div className="modal-wrapper fade-in">
+          <div className="modal-overlay" onClick={() => setShowForm(false)}></div>
+          <div className="modal-content scale-in">
+            <div className="modal-header">
+              <h2>Agregar Producto</h2>
+              <button className="close-btn" onClick={() => setShowForm(false)}>
+                <FiX />
+              </button>
+            </div>
+            <ProductForm onSuccess={() => setShowForm(false)} />
+          </div>
         </div>
       )}
+
       {isEditing && (
-        <>
+        <div className="modal-wrapper fade-in">
           <div className="modal-overlay" onClick={() => setIsEditing(false)}></div>
-          <div className="modal-container">
-            <h3>Editar Producto</h3>
-            <form onSubmit={handleUpdate}>
-              <div>
-                <label>Nombre:</label>
+          <div className="modal-content scale-in">
+            <div className="modal-header">
+              <h2>Editar Producto</h2>
+              <button className="close-btn" onClick={() => setIsEditing(false)}>
+                <FiX />
+              </button>
+            </div>
+            <form onSubmit={handleUpdate} className="edit-form">
+              <div className="form-group">
+                <label className="form-label">Nombre:</label>
                 <input
                   type="text"
-                  value={currentProduct.name}
+                  className="form-control"
+                  value={currentProduct?.name}
                   onChange={(e) =>
                     setCurrentProduct({ ...currentProduct, name: e.target.value })
                   }
                   required
                 />
               </div>
-              <div>
-                <label>Descripción:</label>
+              <div className="form-group">
+                <label className="form-label">Descripción:</label>
                 <textarea
-                  value={currentProduct.description}
+                  className="form-control"
+                  value={currentProduct?.description}
                   onChange={(e) =>
                     setCurrentProduct({
                       ...currentProduct,
@@ -160,37 +211,45 @@ const Home = () => {
                   required
                 />
               </div>
-              <div>
-                <label>Precio:</label>
+              <div className="form-group">
+                <label className="form-label">Precio:</label>
                 <input
                   type="number"
-                  value={currentProduct.price}
+                  className="form-control"
+                  value={currentProduct?.price}
                   onChange={(e) =>
                     setCurrentProduct({ ...currentProduct, price: e.target.value })
                   }
                   required
                 />
               </div>
-              <div>
-                <label>Stock:</label>
+              <div className="form-group">
+                <label className="form-label">Stock:</label>
                 <input
                   type="number"
-                  value={currentProduct.stock}
+                  className="form-control"
+                  value={currentProduct?.stock}
                   onChange={(e) =>
                     setCurrentProduct({ ...currentProduct, stock: e.target.value })
                   }
                   required
                 />
               </div>
-              <button type="submit" style={{ marginRight: '10px' }}>
-                Guardar Cambios
-              </button>
-              <button type="button" onClick={() => setIsEditing(false)}>
-                Cancelar
-              </button>
+              <div className="form-actions">
+                <button type="submit" className="save-btn">
+                  Guardar Cambios
+                </button>
+                <button 
+                  type="button" 
+                  className="cancel-btn"
+                  onClick={() => setIsEditing(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
             </form>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

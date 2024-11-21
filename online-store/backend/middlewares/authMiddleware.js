@@ -11,6 +11,7 @@ exports.protect = async (req, res, next) => {
       console.log('Usuario autenticado desde protect:', req.user); // Depuración
       next();
     } catch (err) {
+      console.error('Error en el middleware protect:', err.message);
       res.status(401).json({ error: 'No autorizado, token inválido' });
     }
   }

@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { FiTrash2, FiShoppingBag, FiCreditCard, FiMinus, FiPlus } from 'react-icons/fi';
+import '../styles/Login.css';
 
 const Cart = () => {
-  const [cartItems, setCartItems] = useState([]); // Inicializa como un array vacío
+  const [cartItems, setCartItems] = useState([]);
   const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCart = async () => {
@@ -17,14 +20,16 @@ const Cart = () => {
 
         // Asegúrate de que los productos se extraen correctamente
         if (response.data && response.data.products) {
-          setCartItems(response.data.products); // Accede al array "products"
+          setCartItems(response.data.products);
           calculateTotal(response.data.products);
         } else {
-          setCartItems([]); // Si no hay productos, establece un array vacío
+          setCartItems([]);
         }
       } catch (err) {
         console.error('Error al obtener el carrito:', err.message);
-        setCartItems([]); // Manejo de errores
+        setCartItems([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -40,6 +45,8 @@ const Cart = () => {
   };
 
   const handleQuantityChange = async (productId, newQuantity) => {
+    if (newQuantity < 1) return;
+    
     try {
       const token = localStorage.getItem('token');
       await axios.put(
@@ -51,46 +58,38 @@ const Cart = () => {
           },
         }
       );
-      // Actualiza el estado local con la nueva cantidad
-      setCartItems((prev) =>
-        prev.map((item) =>
-          item.productId._id === productId ? { ...item, quantity: newQuantity } : item
-        )
+
+      const updatedItems = cartItems.map((item) =>
+        item.productId._id === productId ? { ...item, quantity: newQuantity } : item
       );
-      calculateTotal(cartItems);
-      alert('Cantidad actualizada correctamente');
+      setCartItems(updatedItems);
+      calculateTotal(updatedItems);
     } catch (err) {
       console.error('Error al actualizar la cantidad:', err.message);
-      alert('No se pudo actualizar la cantidad');
     }
   };
-  
 
   const handleRemoveItem = async (productId) => {
     try {
       const token = localStorage.getItem('token');
-      console.log('Sending Product ID:', productId); // Agrega este log para depurar
-  
-      const response = await axios.delete(`http://localhost:5000/api/cart/remove/${productId}`, {
+      await axios.delete(`http://localhost:5000/api/cart/remove/${productId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-  
-      console.log('Respuesta del servidor:', response.data);
-      setCartItems((prev) => prev.filter((item) => item.productId._id !== productId));
-      alert('Producto eliminado del carrito');
+
+      const updatedItems = cartItems.filter(item => item.productId._id !== productId);
+      setCartItems(updatedItems);
+      calculateTotal(updatedItems);
     } catch (err) {
-      console.error('Error al eliminar el producto del carrito:', err.message);
+      console.error('Error al eliminar el producto:', err.message);
     }
   };
-  
-  
 
   const handleCheckout = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(
+      await axios.post(
         'http://localhost:5000/api/cart/checkout',
         {},
         {
@@ -99,43 +98,111 @@ const Cart = () => {
           },
         }
       );
-  
-      // Vaciar el estado del carrito
+
       setCartItems([]);
-      alert('Compra finalizada con éxito. Factura generada.');
-  
-      console.log('Factura:', response.data.invoice); // Depuración
+      setTotal(0);
+      alert('¡Compra realizada con éxito!');
     } catch (err) {
-      console.error('Error al finalizar la compra:', err.message);
-      alert('Hubo un problema al finalizar la compra.');
+      console.error('Error al procesar la compra:', err.message);
+      alert('Hubo un problema al procesar la compra.');
     }
   };
-  
+
   return (
-    <div>
-      <h1>Tu Carrito</h1>
-      {cartItems && cartItems.length === 0 ? (
-        <p>Tu carrito está vacío.</p>
+    <div className="cart-container fade-in">
+      <div className="cart-header">
+        <h1 className="cart-title">
+          <FiShoppingBag className="cart-icon" />
+          Tu Carrito
+        </h1>
+      </div>
+
+      {loading ? (
+        <div className="loading-spinner" />
+      ) : cartItems.length === 0 ? (
+        <div className="empty-cart">
+          <FiShoppingBag className="empty-cart-icon" />
+          <p>Tu carrito está vacío</p>
+          <a href="/" className="continue-shopping">Continuar comprando</a>
+        </div>
       ) : (
-        <div>
-          {cartItems.map((item) => (
-            <div key={item._id} style={{ borderBottom: '1px solid #ccc', padding: '10px' }}>
-              <h3>{item.productId.name}</h3>
-              <p>Precio: ${item.productId.price}</p>
-              <p>
-                Cantidad:{' '}
-                <input
-                  type="number"
-                  value={item.quantity}
-                  min="1"
-                  onChange={(e) => handleQuantityChange(item.productId._id, e.target.value)}
-                />
-              </p>
-              <button onClick={() => handleRemoveItem(item.productId._id)}>Eliminar</button>
+        <div className="cart-content">
+          <div className="cart-items">
+            {cartItems.map((item) => (
+              <div key={item.productId._id} className="cart-item scale-in">
+                <div className="item-image">
+                  <img
+                    src={`http://localhost:5000${item.productId.image}`}
+                    alt={item.productId.name}
+                  />
+                </div>
+                <div className="item-details">
+                  <h3 className="item-name">{item.productId.name}</h3>
+                  <p className="item-price">${item.productId.price.toFixed(2)}</p>
+                </div>
+                <div className="item-quantity">
+                  <div className="quantity-controls">
+                    <button 
+                      className="quantity-btn"
+                      onClick={() => handleQuantityChange(item.productId._id, item.quantity - 1)}
+                      disabled={item.quantity <= 1}
+                    >
+                      <FiMinus />
+                    </button>
+                    <input
+                      type="number"
+                      className="quantity-input"
+                      value={item.quantity}
+                      min="1"
+                      onChange={(e) => handleQuantityChange(
+                        item.productId._id,
+                        parseInt(e.target.value) || 1
+                      )}
+                    />
+                    <button 
+                      className="quantity-btn"
+                      onClick={() => handleQuantityChange(item.productId._id, item.quantity + 1)}
+                    >
+                      <FiPlus />
+                    </button>
+                  </div>
+                  <button 
+                    className="remove-btn"
+                    onClick={() => handleRemoveItem(item.productId._id)}
+                  >
+                    <FiTrash2 />
+                    Eliminar
+                  </button>
+                </div>
               </div>
-          ))}
-          <h2>Total: ${total}</h2>
-          <button onClick={handleCheckout}>Finalizar Compra</button>
+            ))}
+          </div>
+          
+          <div className="cart-summary">
+            <div className="summary-content">
+              <h2>Resumen de Compra</h2>
+              <div className="summary-row">
+                <span>Subtotal</span>
+                <span>${total.toFixed(2)}</span>
+              </div>
+              <div className="summary-row">
+                <span>Envío</span>
+                <span>Gratis</span>
+              </div>
+              <div className="summary-total">
+                <span>Total</span>
+                <span>${total.toFixed(2)}</span>
+              </div>
+              <button 
+                className="checkout-btn"
+                onClick={handleCheckout}
+                disabled={cartItems.length === 0}
+              >
+                <FiCreditCard />
+                Finalizar Compra
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

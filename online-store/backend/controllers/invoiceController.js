@@ -114,10 +114,19 @@ exports.getUserInvoices = async (req, res) => {
 
     console.log('User ID extraído del token:', userId);
 
-    // Buscar facturas asociadas al userId
-    const invoices = await Invoice.findAll({ where: { userId } });
+    // Buscar facturas asociadas al userId y ordenarlas por fecha descendente
+    const invoices = await Invoice.findAll({
+      where: { userId },
+      order: [['createdAt', 'DESC']], // Ordenar por fecha más reciente
+      include: [
+        {
+          model: require('../modelsRelational/invoiceDetails'),
+          attributes: ['productName', 'quantity', 'price'], // Obtener detalles del producto
+        },
+      ],
+    });
 
-    if (invoices.length === 0) {
+    if (!invoices || invoices.length === 0) {
       return res.status(404).json({ error: 'No se encontraron facturas para este usuario' });
     }
 
